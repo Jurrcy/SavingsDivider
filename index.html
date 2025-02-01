@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razdelitev Proračuna</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        input {
+            width: 90%;
+            padding: 8px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        .subcategory {
+            padding-left: 20px;
+            font-size: 0.9em;
+            background-color: #fafafa;
+            color: #666;
+        }
+        .error {
+            color: #dc3545;
+            font-size: 0.9em;
+            margin-top: 8px;
+            display: none;
+        }
+        .amount-cell {
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+        .percentage-input {
+            width: 60px;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+        .remaining-negative {
+            color: #dc3545;
+        }
+        .investing-row td {
+            border-bottom: none;
+        }
+        .investing-sub td {
+            border-top: none;
+            border-bottom: none;
+        }
+        .investing-sub:last-child td {
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .percentage-display {
+            font-family: monospace;
+            font-size: 1.1em;
+            padding: 8px;
+        }
+        .rounded-amount {
+            color: green;
+        }
+        .original-amount {
+            font-size: 0.8em;
+            color: #888;
+            margin-left: 5px;
+        }
+        .summary-row {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+        .withdraw-group {
+            background-color: #f8f9fa;
+        }
+        .withdraw-group td {
+            font-weight: bold;
+        }
+        .checkbox-cell {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Razdelitev Proračuna</h2>
+        <label for="income">Vnesi mesečni znesek:</label>
+        <input type="number" id="income" placeholder="Vnesi znesek" oninput="calculateBudget()">
+        <div id="error" class="error">Skupni odstotek ne sme presegati 100%</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Kategorija</th>
+                    <th>Znesek (€)</th>
+                    <th>%</th>
+                    <th>Izplačano</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="withdraw-group">
+                    <td colspan="4">Za izplačilo</td>
+                </tr>
+                <tr>
+                    <td>Samostojnost (stanovanje, položnice, hrana)</td>
+                    <td id="independence" class="amount-cell"></td>
+                    <td><input type="number" id="independencePct" class="percentage-input" value="50" min="0" max="100" oninput="calculateBudget()"></td>
+                    <td class="checkbox-cell"><input type="checkbox" id="independenceCheck" onchange="calculateBudget()"></td>
+                </tr>
+                <tr>
+                    <td>Emergency savings</td>
+                    <td id="emergency" class="amount-cell"></td>
+                    <td><input type="number" id="emergencyPct" class="percentage-input" value="10" min="0" max="100" oninput="calculateBudget()"></td>
+                    <td class="checkbox-cell"><input type="checkbox" id="emergencyCheck" onchange="calculateBudget()"></td>
+                </tr>
+                <tr>
+                    <td>Long-term savings (hiša, avto, ...)</td>
+                    <td id="longTerm" class="amount-cell"></td>
+                    <td><input type="number" id="longTermPct" class="percentage-input" value="15" min="0" max="100" oninput="calculateBudget()"></td>
+                    <td class="checkbox-cell"><input type="checkbox" id="longTermCheck" onchange="calculateBudget()"></td>
+                </tr>
+                <tr class="withdraw-group">
+                    <td colspan="4">Ostalo</td>
+                </tr>
+                <tr>
+                    <td>Prosti denar</td>
+                    <td id="freeMoney" class="amount-cell"></td>
+                    <td><input type="number" id="freeMoneyPct" class="percentage-input" value="10" min="0" max="100" oninput="calculateBudget()"></td>
+                    <td class="checkbox-cell">-</td>
+                </tr>
+                <tr class="investing-row">
+                    <td>Investing</td>
+                    <td id="investing" class="amount-cell"></td>
+                    <td id="investingPct" class="percentage-display">15</td>
+                    <td class="checkbox-cell">-</td>
+                </tr>
+                <tr class="investing-sub">
+                    <td class="subcategory">→ ETF</td>
+                    <td id="investingETF" class="amount-cell"></td>
+                    <td><input type="number" id="investingETFPct" class="percentage-input" value="10" min="0" max="100" oninput="calculateBudget()"></td>
+                    <td class="checkbox-cell">-</td>
+                </tr>
+                <tr class="investing-sub">
+                    <td class="subcategory">→ Po želji</td>
+                    <td id="investingChoice" class="amount-cell"></td>
+                    <td><input type="number" id="investingChoicePct" class="percentage-input" value="5" min="0" max="100" oninput="calculateBudget()"></td>
+                    <td class="checkbox-cell">-</td>
+                </tr>
+                <tr class="total-row">
+                    <td>Skupaj</td>
+                    <td id="total" class="amount-cell"></td>
+                    <td id="totalPercentage">100%</td>
+                    <td class="checkbox-cell">-</td>
+                </tr>
+                <tr>
+                    <td>Preostanek</td>
+                    <td id="remaining" class="amount-cell"></td>
+                    <td>-</td>
+                    <td class="checkbox-cell">-</td>
+                </tr>
+                <tr class="summary-row">
+                    <td>Prosti denar + Preostanek</td>
+                    <td id="freeMoneyTotal" class="amount-cell"></td>
+                    <td>-</td>
+                    <td class="checkbox-cell">-</td>
+                </tr>
+                <tr class="summary-row">
+                    <td>Skupaj za izplačilo</td>
+                    <td id="totalWithdraw" class="amount-cell"></td>
+                    <td>-</td>
+                    <td class="checkbox-cell">-</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <script>
+        function roundDownToTen(num) {
+            return Math.floor(num / 10) * 10;
+        }
+
+        function calculateBudget() {
+            let income = parseFloat(document.getElementById('income').value) || 0;
+            let independencePct = parseFloat(document.getElementById('independencePct').value) / 100;
+            let freeMoneyPct = parseFloat(document.getElementById('freeMoneyPct').value) / 100;
+            let emergencyPct = parseFloat(document.getElementById('emergencyPct').value) / 100;
+            let longTermPct = parseFloat(document.getElementById('longTermPct').value) / 100;
+            let investingETFPct = parseFloat(document.getElementById('investingETFPct').value) / 100;
+            let investingChoicePct = parseFloat(document.getElementById('investingChoicePct').value) / 100;
+            
+            let investingPct = investingETFPct + investingChoicePct;
+            let totalPct = independencePct + freeMoneyPct + emergencyPct + longTermPct + investingPct;
+            let errorElement = document.getElementById('error');
+            
+            if (totalPct > 1) {
+                errorElement.style.display = 'block';
+                return;
+            } else {
+                errorElement.style.display = 'none';
+            }
+            
+            // Calculate main category amounts (excluding investing subcategories)
+            let amounts = {
+                independence: {
+                    original: Math.round(income * independencePct),
+                    rounded: roundDownToTen(Math.round(income * independencePct))
+                },
+                freeMoney: {
+                    original: Math.round(income * freeMoneyPct),
+                    rounded: roundDownToTen(Math.round(income * freeMoneyPct))
+                },
+                emergency: {
+                    original: Math.round(income * emergencyPct),
+                    rounded: roundDownToTen(Math.round(income * emergencyPct))
+                },
+                longTerm: {
+                    original: Math.round(income * longTermPct),
+                    rounded: roundDownToTen(Math.round(income * longTermPct))
+                },
+                investing: {
+                    original: Math.round(income * investingPct),
+                    rounded: roundDownToTen(Math.round(income * investingPct))
+                }
+            };
+            
+            // Calculate investing subcategory amounts
+            amounts.investingETF = {
+                original: Math.round(income * investingETFPct),
+                rounded: roundDownToTen(Math.round(income * investingETFPct))
+            };
+            amounts.investingChoice = {
+                original: Math.round(income * investingChoicePct),
+                rounded: roundDownToTen(Math.round(income * investingChoicePct))
+            };
+            
+            // Calculate totals (now excluding investing subcategories to prevent double-counting)
+            let totalAllocated = Object.keys(amounts)
+                .filter(key => !key.startsWith('investing') || key === 'investing')
+                .reduce((sum, key) => sum + amounts[key].rounded, 0);
+            
+            let remaining = income - totalAllocated;
+            
+            // Calculate free money total (free money + remaining)
+            let freeMoneyTotal = amounts.freeMoney.rounded + remaining;
+            
+            // Calculate total amount to withdraw based on unchecked categories
+            let totalWithdraw = 0;
+            if (!document.getElementById('independenceCheck').checked) {
+                totalWithdraw += amounts.independence.rounded;
+            }
+            if (!document.getElementById('emergencyCheck').checked) {
+                totalWithdraw += amounts.emergency.rounded;
+            }
+            if (!document.getElementById('longTermCheck').checked) {
+                totalWithdraw += amounts.longTerm.rounded;
+            }
+            
+            // Update DOM
+            Object.keys(amounts).forEach(key => {
+                let amountCell = document.getElementById(key);
+                amountCell.innerHTML = `<span class="rounded-amount">${amounts[key].rounded.toLocaleString('sl-SI')}</span> <span class="original-amount">(${amounts[key].original.toLocaleString('sl-SI')})</span>`;
+            });
+            
+            document.getElementById('investingPct').textContent = `${(investingPct * 100).toFixed(1)}`;
+            document.getElementById('total').innerHTML = `<span class="rounded-amount">${totalAllocated.toLocaleString('sl-SI')}</span>`;
+            document.getElementById('totalPercentage').textContent = `${(totalPct * 100).toFixed(1)}%`;
+            
+            let remainingElement = document.getElementById('remaining');
+            remainingElement.textContent = remaining.toLocaleString('sl-SI');
+            remainingElement.className = remaining < 0 ? 'amount-cell remaining-negative' : 'amount-cell';
+            
+            // Update free money total
+            let freeMoneyTotalElement = document.getElementById('freeMoneyTotal');
+            freeMoneyTotalElement.textContent = freeMoneyTotal.toLocaleString('sl-SI');
+            
+            // Update total amount to withdraw
+            let totalWithdrawElement = document.getElementById('totalWithdraw');
+            totalWithdrawElement.textContent = totalWithdraw.toLocaleString('sl-SI');
+        }
+        
+        // Initial calculation
+        calculateBudget();
+    </script>
+</body>
+</html>
